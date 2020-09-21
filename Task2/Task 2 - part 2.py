@@ -4,6 +4,7 @@ import random
 from scipy.optimize import minimize
 
 
+# Declairing considered functions
 def f1(x, a, b):
     return a * x + b
 
@@ -12,32 +13,29 @@ def f2(x, a, b):
     return a/(1 + b * x)
 
 
-def error_func(xdata, ydata):
-    return np.sum([(xdata[i] - ydata[i]) * (xdata[i] - ydata[i]) for i in range(len(ydata))])
-
-
-def error_func_f1(*args):
-    try:
+def error_func_f1(*args):   # Least-square error for function f1
+    try:    # Proceeding the case for scipy.optimize.minimize use
         a = args[0][0]
         b = args[0][1]
-    except:
+    except: # Proceeding the case for hand-made implementations
         a = args[0]
         b = args[1]
     xdata = [f1(x, a, b) for x in x_k]
     return np.sum([(xdata[i] - y_k[i]) * (xdata[i] - y_k[i]) for i in range(len(y_k))])
 
 
-def error_func_f2(*args):
-    try:
+def error_func_f2(*args):   # Least-square error for function f2
+    try:    # Proceeding the case for scipy.optimize.minimize use
         a = args[0][0]
         b = args[0][1]
-    except:
+    except: # Proceeding the case for hand-made implementations
         a = args[0]
         b = args[1]
     xdata = [f2(x, a, b) for x in x_k]
     return np.sum([(xdata[i] - y_k[i]) * (xdata[i] - y_k[i]) for i in range(len(y_k))])
 
 
+# Declaring hand-made optimization methods
 def exhaustive_search(func):
     a = np.linspace(0, 1, 1000)
     b = np.linspace(0, 1, 1000)
@@ -80,7 +78,7 @@ def gauss(func):
     return a, b, min_f
 
 
-random.seed(1)
+random.seed(1)  # For repeating results
 alpha = random.uniform(0, 1)
 betta = random.uniform(0, 1)
 noise = np.random.normal(0, 1, 101)
@@ -100,6 +98,7 @@ a_rat, b_rat, minerr_rat = gauss(error_func_f2)
 a2_rat, b2_rat, minerr2_rat = exhaustive_search(error_func_f2)
 
 
+# Saving plots
 plt.plot(x_k, y_k)
 plt.plot(x_k, [f1(x, a, b) for x in x_k], label='gauss')
 plt.plot(x_k, [f1(x, a2, b2) for x in x_k], label='exhaustive search')
