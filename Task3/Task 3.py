@@ -15,14 +15,14 @@ def f2(x, a, b):
 
 def error_func(parms, func=None):   # Least-square error for function f1
     a = parms[0]
-    b = parms[0]
+    b = parms[1]
     approx_data = [func(x, a, b) for x in x_k]
     return np.sum([(approx_data[i] - y_k[i]) * (approx_data[i] - y_k[i]) for i in range(len(y_k))])
 
 
 def error_func_lm(parms, func=None):   # Least-square error for function f1
     a = parms[0]
-    b = parms[0]
+    b = parms[1]
     approx_data = [func(x, a, b) for x in x_k]
     return [(approx_data[i] - y_k[i]) * (approx_data[i] - y_k[i]) for i in range(len(y_k))]
 
@@ -70,23 +70,23 @@ eps = 0.001
 
 
 # Linear approximation of function
-# a, b = gradDescent(f1)
-# print('Gradient descent error: ' + str(error_func([a, b], func=f1)))
-# res = minimize(error_func, x0=[1/2, 1/2], jac=jac, args=f1, method='CG', options={'disp': True, 'maxiter': 1})
-# res2 = minimize(error_func, x0=[1/2, 1/2], jac=jac, args=f1, method='Newton-CG', options={'disp': True})
-# res3 = least_squares(error_func_lm, x0=[1/2, 1/2], method='lm', args=[f1])
-#
+a, b = gradDescent(f1)
+print('Gradient descent error: ' + str(error_func([a, b], func=f1)))
+res = minimize(error_func, x0=[1/2, 1/2], jac=jac, args=f1, method='CG', options={'disp': True, 'maxiter': 1})
+res2 = minimize(error_func, x0=[1/2, 1/2], jac=jac, args=f1, method='Newton-CG', options={'disp': True})
+res3 = least_squares(error_func_lm, x0=[1/2, 1/2], method='lm', args=[f1])
+
 # Saving plot for linear approximation
-# plt.plot(x_k, y_k)
-# plt.plot(x_k, [f1(x, a, b) for x in x_k], label='Gradient Descent')
-# plt.plot(x_k, [f1(x, res.x[0], res.x[1]) for x in x_k], label='CG')
-# plt.plot(x_k, [f1(x, res2.x[0], res2.x[1]) for x in x_k], label='Newton-CG')
-# plt.plot(x_k, [f1(x, res3.x[0], res3.x[1]) for x in x_k], label='Levenberg-Marquardt')
-# plt.title('Linear approximation')
-# plt.legend()
-# # plt.savefig('Linear approximation', dpi=300)
-# plt.show()
-# plt.close()
+plt.plot(x_k, y_k)
+plt.plot(x_k, [f1(x, a, b) for x in x_k], label='Gradient Descent')
+plt.plot(x_k, [f1(x, res.x[0], res.x[1]) for x in x_k], label='CG')
+plt.plot(x_k, [f1(x, res2.x[0], res2.x[1]) for x in x_k], label='Newton-CG')
+plt.plot(x_k, [f1(x, res3.x[0], res3.x[1]) for x in x_k], label='Levenberg-Marquardt')
+plt.title('Linear approximation')
+plt.legend()
+# plt.savefig('Linear approximation', dpi=300)
+plt.show()
+plt.close()
 
 
 # Rational approximation of function
@@ -112,5 +112,5 @@ plt.bar(['Gradient Descent', 'CG', 'Newton-CG', 'Levenberg-Marquardt'],
         [100, res.nfev, res2.nfev, res3.nfev], width=0.4)
 plt.title('Number of function evaluations')
 # plt.savefig('Number of function evaluations for rational approximation', dpi=300)
-plt.show()
+# plt.show()
 
