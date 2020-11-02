@@ -1,116 +1,121 @@
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 import random
-from scipy.optimize import minimize, least_squares
+import pandas as pd
+from scipy.optimize import minimize
+from scipy import optimize
+import warnings
+
+warnings.filterwarnings('ignore')
+
+mu = 0
+sigma = 1
+eps = 1e-3
+
+alpha = np.random.random_sample()
+beta = np.random.random_sample()
+
+s = np.random.normal(mu, sigma, 1001)
+vector = np.array([(i / 1000, alpha * i / 1000 + beta + s[i] / 20) for i in range(1001)])
 
 
-# Declairing considered functions
-def f1(x, a, b):
-    return a * x + b
+def D_linear(t, shape="float"):
+    a, b = t[0], t[1]
+    x, y = vector[:, 0], vector[:, 1]
+    if shape == "tuple":
+        return ((a * x + b - y) ** 2).sum(), 0
+    return ((a * x + b - y) ** 2).sum()
 
 
-def f2(x, a, b):
-    return a/(1 + b * x)
+def D_rational(t, shape="float"):
+    a, b = t[0], t[1]
+    x, y = vector[:, 0], vector[:, 1]
+    if shape == "tuple":
+        return ((a / (1 + b * x) - y) ** 2).sum(), 0
+    return ((a / (1 + b * x) - y) ** 2).sum()
 
 
-def error_func(parms, func=None):   # Least-square error for function f1
-    a = parms[0]
-    b = parms[1]
-    approx_data = [func(x, a, b) for x in x_k]
-    return np.sum([(approx_data[i] - y_k[i]) * (approx_data[i] - y_k[i]) for i in range(len(y_k))])
+def D_liniar_der(t, shape="float"):
+    a, b = t[0], t[1]
+    x, y = vector[:, 0], vector[:, 1]
+    if shape == 'tuple':
+        return np.array([[(2 * x * (a * x + b - y)).sum(), (2 * (a * x + b - y)).sum()],
+                         [0, 0]])
+    return np.array([(2 * x * (a * x + b - y)).sum(),
+                     (2 * (a * x + b - y)).sum()])
 
 
-def error_func_lm(parms, func=None):   # Least-square error for function f1
-    a = parms[0]
-    b = parms[1]
-    approx_data = [func(x, a, b) for x in x_k]
-    return [(approx_data[i] - y_k[i]) * (approx_data[i] - y_k[i]) for i in range(len(y_k))]
+def D_rational_der(t, shape="float"):
+    a, b = t[0], t[1]
+    x, y = vector[:, 0], vector[:, 1]
+    if shape == 'tuple':
+        return np.array([[(-2 * (-a + y + b * x * y) / (1 + b * x) ** 2).sum(),
+                          (-2 * a * b * (a - y * (1 + b * x)) / (1 + b * x) ** 2).sum()],
+                         [0, 0]])
+    return np.array([(-2 * (-a + y + b * x * y) / (1 + b * x) ** 2).sum(),
+                     (-2 * a * b * (a - y * (1 + b * x)) / (1 + b * x) ** 2).sum()])
 
 
-# Declairing optimization methods
-def gradDescent(func):
-    x = np.random.uniform(0, 1, 2)
-    gamma = 1/10
-    iter = 0
-    func_eval = 0
-    while gamma > eps:
-        x_new = x - gamma * jac(x, func=func)
-        if error_func(x_new, func=func) <= error_func(x, func=func):
-            x = x_new
-        func_eval += 2
-        iter += 1
-        gamma *= 0.85
-        print(iter)
-    return x[0], x[1]
+def gradient_descent(func, grad_func, tmp, tol, step=0.00075, max_iter=1000):
+    for i in range(max_iter):
+        f_val = func(tmp)
+        grad_value = grad_func(tmp)
+
+        a_tmp = tmp[0] - step * grad_value[0]
+        b_tmp = tmp[1] - step * grad_value[1]
+        tmp = [a_tmp, b_tmp]
+
+        f_new_val = func(tmp)
+        if abs(f_new_val - f_val) <= tol:
+            return {'fun': f_new_val,
+                    'x': [a_tmp, b_tmp],
+                    'nit': i}
 
 
-# Jacobian
-def jac(params, func=None):
-    a = params[0]
-    b = params[1]
-    df_da = df_db = 0
-    if func == f1:
-        for i in range(len(x_k)):
-            df_da += 2 * (a * x_k[i] + b - y_k[i]) * x_k[i]
-            df_db += 2 * (a * x_k[i] + b - y_k[i])
-    elif func == f2:
-        for i in range(len(x_k)):
-            df_da += 2 * (a * x_k[i] + b - y_k[i]) / (1 + b * x_k[i])
-            df_db += 2 * (a * x_k[i] + b - y_k[i]) * (-a * x_k[i]) / (1 + b * x_k[i])**2
-    return np.array([df_da, df_db])
+start = -1
+stop = 1
 
+report = pd.DataFrame()
+flag = 40
+while (flag > 3):
+    report = pd.DataFrame()
+    a_init = random.uniform(start, stop)
+    b_init = random.uniform(start, stop)
+    try:
+        for function, derivative in zip([D_linear, D_rational], [D_liniar_der, D_rational_der]):
 
-random.seed(1)  # For repeating results
-alpha = random.uniform(0, 1)
-betta = random.uniform(0, 1)
-noise = np.random.normal(0, 1, 101)
-x_k = [k/100 for k in range(101)]
-y_k = [alpha * x_k[k] + betta + noise[k] for k in range(len(x_k))]
-eps = 0.001
+            gd_result = gradient_descent(function, derivative, [a_init, b_init], tol=eps)
+            newtons = minimize(function, [a_init, b_init], method='Newton-CG', tol=eps, jac=derivative)
+            cgd = minimize(function, [a_init, b_init], method='CG', tol=eps)
+            lm = optimize.root(function, [a_init, b_init], method='lm', tol=eps, args=('tuple'), jac=derivative)
 
+            res = [[function.__name__, 'Gradient Descent', gd_result['x'], gd_result['nit'], gd_result['fun']],
+                   [function.__name__, 'Newton’s method', newtons.x, newtons.nit, newtons.fun],
+                   [function.__name__, 'Conjugate Gradient Descent', cgd.x, cgd.nit, cgd.fun],
+                   [function.__name__, 'Levenberg-Marquardt algorithm', lm.x, lm.nfev, lm.fun[0]]]
+            if function.__name__ == "D_rational":
+                flag = newtons.fun
 
-# Linear approximation of function
-a, b = gradDescent(f1)
-print('Gradient descent error: ' + str(error_func([a, b], func=f1)))
-res = minimize(error_func, x0=[1/2, 1/2], jac=jac, args=f1, method='CG', options={'disp': True, 'maxiter': 1})
-res2 = minimize(error_func, x0=[1/2, 1/2], jac=jac, args=f1, method='Newton-CG', options={'disp': True})
-res3 = least_squares(error_func_lm, x0=[1/2, 1/2], method='lm', args=[f1])
+            report = report.append(res, ignore_index=True)
+            # flag -= 1
+    except TypeError:
+        continue
 
-# Saving plot for linear approximation
-plt.plot(x_k, y_k)
-plt.plot(x_k, [f1(x, a, b) for x in x_k], label='Gradient Descent')
-plt.plot(x_k, [f1(x, res.x[0], res.x[1]) for x in x_k], label='CG')
-plt.plot(x_k, [f1(x, res2.x[0], res2.x[1]) for x in x_k], label='Newton-CG')
-plt.plot(x_k, [f1(x, res3.x[0], res3.x[1]) for x in x_k], label='Levenberg-Marquardt')
-plt.title('Linear approximation')
-plt.legend()
-# plt.savefig('Linear approximation', dpi=300)
-plt.show()
-plt.close()
+report.columns = ["function name", "method name", "arg", "nit", 'fval']
+report = report.set_index(['function name', 'method name']).sort_index()
+print(report)
 
-
-# Rational approximation of function
-a, b = gradDescent(f2)
-print('Gradient descent error: ' + str(error_func([a, b], func=f2)))
-res = minimize(error_func, x0=[1/2, 1/2], jac=jac, args=f2, method='CG', options={'disp': True, 'maxiter': 1})
-res2 = minimize(error_func, x0=[1/2, 1/2], jac=jac, args=f2, method='Newton-CG', options={'disp': True})
-res3 = least_squares(error_func_lm, x0=[1/2, 1/2], method='lm', args=[f2])
-
-# Saving plot for rational approximation
-plt.plot(x_k, y_k)
-plt.plot(x_k, [f2(x, a, b) for x in x_k], label='Gradient Descent')
-plt.plot(x_k, [f2(x, res.x[0], res.x[1]) for x in x_k], label='CG')
-plt.plot(x_k, [f2(x, res2.x[0], res2.x[1]) for x in x_k], label='Newton-CG')
-plt.plot(x_k, [f2(x, res3.x[0], res3.x[1]) for x in x_k], label='Levenberg-Marquardt')
-plt.title('Rational approximation')
-plt.legend()
-# plt.savefig('Rational approximation', dpi=300)
-plt.show()
-
-
-plt.bar(['Gradient Descent', 'CG', 'Newton-CG', 'Levenberg-Marquardt'],
-        [100, res.nfev, res2.nfev, res3.nfev], width=0.4)
-plt.title('Number of function evaluations')
-# plt.savefig('Number of function evaluations for rational approximation', dpi=300)
-# plt.show()
-
+for i, func in enumerate(report.index.levels[0]):
+    fig = plt.figure(figsize=(20, 10))
+    plt.scatter(vector[:, 0], vector[:, 1], label='data', marker='.')
+    for method in report.index.levels[1]:
+        example = report.loc[func, method]
+        if func == 'D_linear':
+            plt.plot(vector[:, 0], example['arg'][0] * vector[:, 0] + example['arg'][1], label=method)
+        if func == 'D_rational':
+            plt.plot(vector[:, 0], example['arg'][0] / (1 + example['arg'][1] * vector[:, 0]), label=method)
+    plt.title(func)
+    plt.legend()
+    plt.savefig(func + ".png")
+    plt.show()
+    plt.close(fig)
